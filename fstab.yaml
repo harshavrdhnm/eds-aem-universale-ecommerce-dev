@@ -1,6 +1,6 @@
 mountpoints:
   /:
-    url: "https://author-p130360-e1272151.adobeaemcloud.com/bin/franklin.delivery/adobe-rnd/aem-boilerplate-xcom/main"
+    url: "https://author-p42012-e160093.adobeaemcloud.com/bin/franklin.delivery/harshavrdhnm/eds-aem-universale-ecommerce-dev/main"
     type: "markup"
     suffix: ".html"
   
