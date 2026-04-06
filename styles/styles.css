@@ -141,7 +141,7 @@
 
   /* Additional tokens */
   --type-fixed-font-family: adobe-clean, "Roboto Mono", menlo, consolas, "Liberation Mono", monospace, system-ui, sans-serif;
-  --background-color: var(--color-neutral-50);
+  /* --background-color: var(--color-neutral-50); */
   --nav-height: 6.4rem;
 }
 
