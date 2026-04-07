@@ -1,5 +1,9 @@
 [
   {
+    "id": "test-api-call",
+    "fields": []
+  },
+  {
     "id": "image",
     "fields": [
       {
