@@ -3,13 +3,13 @@
   padding: var(--spacing-m, 1.5rem);
   background-color: var(--background-color-secondary, #f4f6f8);
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px rgb(0 0 0 / 5%);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .test-api-call:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgb(0 0 0 / 10%);
 }
 
 .test-api-call .test-api-call-content {
