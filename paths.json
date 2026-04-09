@@ -4,7 +4,8 @@
     "/content/universal-editor-eds-ecommerce/configuration:/.helix/config.json",
     "/content/universal-editor-eds-ecommerce/headers:/.helix/headers.json",
     "/content/universal-editor-eds-ecommerce/metadata:/metadata.json",
-    "/content/universal-editor-eds-ecommerce.resource/enrichment/enrichment.json:/enrichment/enrichment.json"
+    "/content/universal-editor-eds-ecommerce.resource/enrichment/enrichment.json:/enrichment/enrichment.json",
+    "/content/universal-editor-eds-ecommerce/redirects.json:/redirects.json"
   ],
   "includes": [
     "/content/universal-editor-eds-ecommerce/"
