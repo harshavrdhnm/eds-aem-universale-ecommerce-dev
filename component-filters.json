@@ -24,7 +24,8 @@
       "fragment",
       "product-teaser",
       "product-recommendations",
-      "test-api-call"
+      "test-api-call",
+      "aem-content-fragment"
     ]
   },
   {
