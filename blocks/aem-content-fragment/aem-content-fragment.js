@@ -28,8 +28,13 @@ export default async function decorate(block) {
   const contentDiv = block.querySelector('.aem-cf-content');
 
   try {
-    // Strip trailing slashes or extensions if authored mistakenly
-    cfPath = cfPath.replace(/\.json$/, '').replace(/\.model\.json$/, '');
+    // Strip host origins and extensions if authored mistakenly by the UE picker
+    try {
+      cfPath = new URL(cfPath, window.location.origin).pathname;
+    } catch (e) {
+      // Ignored if invalid URL
+    }
+    cfPath = cfPath.replace(/\.json$/, '').replace(/\.model\.json$/, '').replace(/\.html$/, '');
 
     // 1) Try AEM Assets HTTP API
     let fetchUrl = cfPath;
