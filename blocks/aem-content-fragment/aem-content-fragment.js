@@ -34,7 +34,7 @@ export default async function decorate(block) {
     // 1) Try AEM Assets HTTP API
     let fetchUrl = cfPath;
     if (cfPath.startsWith('/content/dam/')) {
-      fetchUrl = '/api/assets/' + cfPath.replace('/content/dam/', '') + '.json';
+      fetchUrl = `/api/assets/${cfPath.replace('/content/dam/', '')}.json`;
     } else {
       fetchUrl = `${cfPath}.json`;
     }
@@ -52,15 +52,15 @@ export default async function decorate(block) {
     }
 
     if (response.ok) {
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
         const data = await response.json();
-        
+
         // Render JSON nicely for authors to inspect
         const preEl = document.createElement('pre');
         preEl.className = 'aem-cf-json-preview';
         preEl.textContent = JSON.stringify(data, null, 2);
-        
+
         contentDiv.innerHTML = '';
         contentDiv.append(preEl);
       } else {
