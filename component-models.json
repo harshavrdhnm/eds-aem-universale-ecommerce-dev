@@ -1,5 +1,16 @@
 [
   {
+    "id": "aem-content-fragment",
+    "fields": [
+      {
+        "component": "text",
+        "name": "path",
+        "label": "Content Fragment Path",
+        "description": "Path to the AEM Content Fragment"
+      }
+    ]
+  },
+  {
     "id": "test-api-call",
     "fields": []
   },
