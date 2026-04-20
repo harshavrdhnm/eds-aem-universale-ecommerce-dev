@@ -38,3 +38,13 @@ Major changes are described and documented as part of pull requests and tracked 
 Since Ocotober 2025, folder mapping is no longer configured by default as its [deprecated](https://www.aem.live/developer/folder-mapping). To keep it easy to start, static product pages have been created as part ot the site template for all products listed on the homepage. 
 
 It is highly recommended to create physical product detail pages in Edge Delivery Services. Use the [AEM Commerce Prerenderer](https://github.com/adobe-rnd/aem-commerce-prerender) to implement a [byom overaly](https://www.aem.live/developer/byom#setup-byom-as-content-overlay) that creates and publishes product detail pages from the product data available in Catalog Service.
+
+## Custom Blocks
+
+### AEM Content Fragment (`aem-content-fragment`)
+A custom block designed to fetch and display the raw JSON structure of an AEM Content Fragment natively in your EDS storefront. This is extremely useful for verifying fragment data directly on a page or for building out deeper integrations with your AEM Headless assets. 
+
+**How to use:**
+1. In the Universal Editor, drag and drop the **AEM Content Fragment** block onto a page.
+2. In the properties panel, paste the absolute path to your AEM content fragment into the **Content Fragment Path** field (e.g., `/content/dam/learning-academy/site-content/na/ca/en-ca/showcase/my-teams-no-teams-assigned`).
+3. The component auto-detects the best AEM API mechanism (attempting `/api/assets/...`, falling back to standard Sling nodes `.json`, etc.) to safely fetch and display your formatted JSON data inline.
