@@ -1,6 +1,6 @@
 mountpoints:
   /:
-    url: "https://author-p42012-e160093.adobeaemcloud.com/bin/franklin.delivery/harshavrdhnm/eds-aem-universale-ecommerce-dev/feature-developer1"
+    url: "https://author-p42012-e160093.adobeaemcloud.com/bin/franklin.delivery/harshavrdhnm/eds-aem-universale-ecommerce-dev/main"
     type: "markup"
     suffix: ".html"
   
