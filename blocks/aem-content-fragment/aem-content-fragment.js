@@ -28,32 +28,46 @@ export default async function decorate(block) {
   const contentDiv = block.querySelector('.aem-cf-content');
 
   try {
-    // Strip host origins and extensions if authored mistakenly by the UE picker
+    // Strip only the HTML extension if appended securely by the picker
+    cfPath = cfPath.replace(/\.html$/, '');
+
+    // If the path is relative, it means it's requesting from the EDS domain.
+    // We map relative paths back to the AEM backend for payload fetching.
+    let targetBaseUrl = '';
     try {
-      cfPath = new URL(cfPath, window.location.origin).pathname;
-    } catch (e) {
-      // Ignored if invalid URL
+      const parsedUrl = new URL(cfPath);
+      targetBaseUrl = parsedUrl.origin;
+      cfPath = parsedUrl.pathname;
+
+      // If an author URL is pasted, map to publish tier for unauth delivery
+      if (targetBaseUrl.includes('author-')) {
+        targetBaseUrl = targetBaseUrl.replace('author-', 'publish-');
+      }
+    } catch {
+      // Relative path: strictly point to AEM Publish host for unauth delivery
+      targetBaseUrl = 'https://publish-p42012-e160093.adobeaemcloud.com';
     }
-    cfPath = cfPath.replace(/\.json$/, '').replace(/\.model\.json$/, '').replace(/\.html$/, '');
+
+    cfPath = cfPath.replace(/\.json$/, '').replace(/\.model\.json$/, '');
 
     // 1) Try AEM Assets HTTP API
-    let fetchUrl = cfPath;
+    let fetchUrl = '';
     if (cfPath.startsWith('/content/dam/')) {
-      fetchUrl = `/api/assets/${cfPath.replace('/content/dam/', '')}.json`;
+      fetchUrl = `${targetBaseUrl}/api/assets/${cfPath.replace('/content/dam/', '')}.json`;
     } else {
-      fetchUrl = `${cfPath}.json`;
+      fetchUrl = `${targetBaseUrl}${cfPath}.json`;
     }
 
     let response = await fetch(fetchUrl);
 
     // 2) Fallback to standard Sling node JSON
     if (!response.ok) {
-      response = await fetch(`${cfPath}.json`);
+      response = await fetch(`${targetBaseUrl}${cfPath}.json`);
     }
 
     // 3) Fallback to _jcr_content child
     if (!response.ok) {
-      response = await fetch(`${cfPath}/_jcr_content.json`);
+      response = await fetch(`${targetBaseUrl}${cfPath}/_jcr_content.json`);
     }
 
     if (response.ok) {

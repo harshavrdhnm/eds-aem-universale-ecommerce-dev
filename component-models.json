@@ -4,9 +4,10 @@
     "fields": [
       {
         "component": "text",
-        "name": "path",
+        "name": "fragmentPath",
         "label": "Content Fragment Path",
-        "description": "Path to the AEM Content Fragment"
+        "description": "Path to the AEM Content Fragment",
+        "value": "/content/dam/digital-site/test-cf-data-for-eds"
       }
     ]
   },
