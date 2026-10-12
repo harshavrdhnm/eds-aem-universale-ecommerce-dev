@@ -23,7 +23,10 @@
       "columns",
       "fragment",
       "product-teaser",
-      "product-recommendations"
+      "product-recommendations",
+      "test-api-call",
+      "aem-content-fragment",
+      "mustache-template"
     ]
   },
   {
