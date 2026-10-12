@@ -28,7 +28,7 @@
       "id": "mustache-template",
       "fields": [
         {
-          "component": "multiline",
+          "component": "text-area",
           "name": "template",
           "label": "HTML Mustache Template",
           "valueType": "string",

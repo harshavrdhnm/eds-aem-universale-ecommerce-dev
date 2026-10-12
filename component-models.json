@@ -1,21 +1,5 @@
 [
   {
-    "id": "aem-content-fragment",
-    "fields": [
-      {
-        "component": "text",
-        "name": "fragmentPath",
-        "label": "Content Fragment Path",
-        "description": "Path to the AEM Content Fragment",
-        "value": "/content/dam/digital-site/test-cf-data-for-eds"
-      }
-    ]
-  },
-  {
-    "id": "test-api-call",
-    "fields": []
-  },
-  {
     "id": "image",
     "fields": [
       {
@@ -437,7 +421,7 @@
     "id": "mustache-template",
     "fields": [
       {
-        "component": "multiline",
+        "component": "text-area",
         "name": "template",
         "label": "HTML Mustache Template",
         "valueType": "string",

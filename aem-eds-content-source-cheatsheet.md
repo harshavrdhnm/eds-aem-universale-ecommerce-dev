@@ -1,143 +1,264 @@
-# AEM Edge Delivery Services (EDS) with AEM as Content Source Cheatsheet
+# AEM Edge Delivery Services (EDS) with AEM as a Content Source: Master Cheatsheet
 
-> Quick-reference guide for architecture, setup, Universal Editor instrumentation, block modeling, publishing flows, and CLI tooling when using **AEM as a Cloud Service (AEMaaCS)** as the authoring source for **Edge Delivery Services (EDS)**.
+> Complete, state-of-the-art reference covering **both** configuration methodologies (**File-Based** vs **Centralized Configuration Service**) and **both** authoring paradigms (**Crosswalk Visual Page Blocks** vs **Headless Content Fragments**), with end-to-end flow diagrams, production schemas, and code implementations.
 
 ---
 
-## 1. High-Level Architecture & Flow
+## Master Architecture Overview
 
 ```mermaid
-flowchart LR
-    A["AEM Author<br/>(AEMaaCS)"] -->|"WYSIWYG Editing"| B["Universal Editor<br/>(UE)"]
-    A -->|"Publish / Replicate"| C["EDS Admin Service<br/>(admin.hlx.page / admin.aem.page)"]
-    C -->|"Generate HTML / JSON"| D["Preview Tier<br/>(*.aem.page)"]
-    C -->|"Push to CDN"| E["Live Tier<br/>(*.aem.live)"]
-    E -->|"Production CDN"| F["End Users<br/>(100 Lighthouse)"]
-    G["GitHub Repo<br/>(Code & Blocks)"] -->|"Sync via Webhooks"| C
-```
+flowchart TB
+    subgraph AEM_Authoring ["AEM as a Cloud Service (Author Tier)"]
+        subgraph Paradigm_1 ["Authoring Paradigm A: Visual Pages"]
+            P1["AEM Sites Pages<br/>(Universal Editor Canvas)"]
+            P1_Comp["Crosswalk Blocks<br/>(core/franklin/components/block)"]
+        end
 
-| Component | Role | URL / Domain Pattern |
-| :--- | :--- | :--- |
-| **AEM Author** | Content repository, JCR content tree, DAM assets, workflow | `author-pXXXXX-eYYYYY.adobeaemcloud.com` |
-| **Universal Editor** | In-context visual editor for EDS DOM & blocks | `experience.adobe.com/#/@org/aem/editor/canvas/...` |
-| **GitHub Repo** | Frontend code (CSS, JS, blocks, templates, icons) | `github.com/<owner>/<repo>` |
-| **Preview Tier** | Content verification before publishing | `https://<branch>--<repo>--<owner>.aem.page` |
-| **Live Tier** | Published production content edge cache | `https://<branch>--<repo>--<owner>.aem.live` |
-| **Production CDN** | Customer apex / vanity domain | `https://www.yourdomain.com` |
+        subgraph Paradigm_2 ["Authoring Paradigm B: Content Fragments"]
+            P2["Content Fragments (CFs)<br/>(Structured Content Models)"]
+            P2_Tpl["HTML Template Renderer<br/>(Handlebars / Mustache)"]
+            P2_GQL["Persisted GraphQL Queries<br/>(/graphql/execute.json)"]
+        end
+    end
+
+    subgraph Config_Control ["Routing & Ingestion Control"]
+        C_File["Option 1: File-Based<br/>fstab.yaml + paths.json in Git"]
+        C_Service["Option 2: Config Service<br/>Centralized Config Bus API (Repoless)"]
+    end
+
+    subgraph Sync_Engine ["Delivery Pipeline"]
+        SyncServlet["/bin/franklin.delivery & Content Bus Sync"]
+    end
+
+    subgraph Edge_Tiers ["Edge Delivery Services (aem.live / aem.page)"]
+        CB_Preview["Preview Content Bus (*.aem.page)"]
+        CB_Live["Live Content Bus (*.aem.live)"]
+        EdgeCDN["Edge Cache & Fastly / Cloudflare"]
+    end
+
+    P1 & P1_Comp --> SyncServlet
+    P2 & P2_Tpl & P2_GQL --> SyncServlet
+    C_File -.->|Resolves Routes| SyncServlet
+    C_Service -.->|Resolves Routes| SyncServlet
+    SyncServlet --> CB_Preview
+    SyncServlet --> CB_Live
+    CB_Live --> EdgeCDN
+```
 
 ---
 
-## 2. Core Project Configuration
+## Part 1: Configuration Approaches (File-Based vs Configuration Service)
 
-### `fstab.yaml` (Mountpoint Configuration)
-Defines how Edge Delivery Services maps URL paths to your AEM backend:
+### Comparison & Decision Matrix
+
+| Dimension | Option 1: File-Based Configuration | Option 2: Centralized Configuration Service |
+| :--- | :--- | :--- |
+| **Primary Files** | `fstab.yaml`, `paths.json`, `helix-query.yaml` | Admin API `/config/...` endpoints, `config.json` |
+| **Location** | Stored in GitHub repository (`main` branch) | Stored centrally in Edge Delivery **Config Bus** |
+| **Multi-Site Capability** | 1 GitHub Repo = 1 Site Mount configuration | **Repoless**: 1 GitHub Repo serves 100+ multi-tenant/localized sites |
+| **Deployment Mechanism** | Git commit + PR merge into `main` | Dynamic API call or Admin UI update (zero code deployments) |
+| **Precedence** | Overrides Configuration Service if present in Git | Active when file-based configurations are absent from Git |
+| **Recommended For** | Single-brand setups, developer-controlled repo configs | Enterprise multi-brand/multi-tenant setups, SaaS-style deployments |
+
+---
+
+### 1A. Option 1: File-Based Configuration (`fstab.yaml` + `paths.json`)
+
+#### Flow Diagram: File-Based Resolution
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dev as Developer
+    participant Git as GitHub (main branch)
+    participant EdgeWorker as Edge Delivery Ingestion Worker
+    participant AEM as AEM Cloud Service Author
+
+    Dev->>Git: Commits fstab.yaml & paths.json
+    EdgeWorker->>Git: Reads root fstab.yaml (discovers author endpoint)
+    EdgeWorker->>Git: Reads paths.json (resolves JCR <-> Edge URL mapping)
+    EdgeWorker->>AEM: Requests /bin/franklin.delivery/... with translated path
+    AEM-->>EdgeWorker: Returns HTML payload
+```
+
+#### 1. `fstab.yaml` (Repository Root)
+Defines the mountpoint pointing to the AEM authoring service:
 
 ```yaml
 mountpoints:
-  /:
-    url: https://author-p<PROGRAM_ID>-e<ENV_ID>.adobeaemcloud.com/bin/franklin.delivery/<PROGRAM_ID>/<SITE_NAME>
-    type: markup
-    suffix: .html
+  /: https://author-p12345-e67890.adobeaemcloud.com/bin/franklin.delivery/my-org/my-site-repo/main
 ```
 
-> [!TIP]
-> If using hybrid authoring (AEM for sites/fragments, SharePoint/Google Drive for blogs or press releases), add multiple mountpoints under `mountpoints:`.
-
----
-
-### Sidekick Configuration (`tools/sidekick/config.json`)
-Connects the EDS Sidekick browser extension / bookmarklet with your AEM authoring instance:
+#### 2. `paths.json` (Repository Root)
+Controls path rewriting, content inclusion, and exclusion rules:
 
 ```json
 {
-  "project": "My EDS Project",
-  "host": "www.mysite.com",
-  "pushHost": "https://author-p12345-e67890.adobeaemcloud.com",
-  "plugins": [
-    {
-      "id": "edit-in-aem",
-      "title": "Edit in AEM",
-      "environments": ["preview", "live", "prod"],
-      "url": "https://experience.adobe.com/#/@myorg/aem/editor/canvas/{owner}--{repo}--{ref}.aem.page{path}"
-    }
-  ]
-}
-```
-
----
-
-## 3. Universal Editor (UE) Instrumentation
-
-To enable WYSIWYG editing in Universal Editor, the DOM generated by AEM and decorated by EDS must include `data-aue-*` attributes.
-
-### Essential `data-aue-*` Attributes
-
-| Attribute | Purpose | Example Value |
-| :--- | :--- | :--- |
-| `data-aue-resource` | JCR path or URN identifying the resource | `urn:aemconnection:/content/mysite/us/en/jcr:content/root/hero` |
-| `data-aue-type` | Type of node | `page`, `container`, `component`, `text`, `media`, `reference` |
-| `data-aue-prop` | Property name on the node | `title`, `description`, `image`, `link` |
-| `data-aue-model` | References model defined in component definition | `hero`, `teaser`, `cards` |
-| `data-aue-filter` | Container filter ID controlling what children can be dropped | `main-filter`, `section-filter` |
-| `data-aue-behavior` | Special behaviors (e.g. component wrapper) | `component` |
-| `data-aue-label` | Friendly label shown in the Universal Editor panel | `"Hero Banner"` |
-
----
-
-### Page Head Setup for Universal Editor
-Include connection meta tags in `head.html` or through `scripts.js`:
-
-```html
-<!-- Universal Editor AEM Connection -->
-<meta name="urn:adobe:aue:system:aem" content="aem:https://author-p12345-e67890.adobeaemcloud.com">
-
-<!-- Universal Editor Client Library (Loaded in authoring context) -->
-<script src="https://universal-editor-service.experiencecloud.live/corslib/LATEST" async></script>
-```
-
----
-
-### Instrumenting Blocks in JavaScript (`/blocks/hero/hero.js`)
-
-When your block decorates the DOM, maintain or enrich the instrumentation:
-
-```javascript
-export default function decorate(block) {
-  const [titleRow, imageRow, linkRow] = [...block.children];
-
-  // Preserve or add authoring instrumentation
-  if (block.hasAttribute('data-aue-resource')) {
-    const heading = titleRow?.querySelector('h1, h2, h3');
-    if (heading) {
-      heading.setAttribute('data-aue-prop', 'heading');
-      heading.setAttribute('data-aue-type', 'text');
-    }
-
-    const img = imageRow?.querySelector('img');
-    if (img) {
-      img.setAttribute('data-aue-prop', 'image');
-      img.setAttribute('data-aue-type', 'media');
-    }
+  "paths": {
+    "mappings": [
+      "/content/mysite/us/en/:/",
+      "/content/mysite/uk/en-gb/:/uk/",
+      "/content/mysite/de/de-de/:/de/",
+      "/content/dam/mysite/:/assets/"
+    ],
+    "includes": [
+      "/**"
+    ],
+    "excludes": [
+      "/**/drafts/**",
+      "/**/archive/**",
+      "/**/internal-notes/**"
+    ]
   }
 }
 ```
 
 ---
 
-## 4. Component Definition & Models (Universal Editor Schema)
+### 1B. Option 2: Centralized Configuration Service (Repoless Setup)
 
-Universal Editor requires model and definition JSON files in your project repository under `/models` or component-specific locations:
+In a repoless architecture, configuration is managed in the **Config Bus**. This allows multiple distinct AEM sites (e.g. `brand-a.com`, `brand-b.com`, `brand-c.de`) to share a single frontend GitHub repository (`adobe/enterprise-eds-theme`).
 
-### 1. `component-models.json` (Field Schema)
+#### Flow Diagram: Centralized Config Service (Repoless)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as DevOps / Content Admin
+    participant AdminAPI as Admin API (admin.hlx.page / admin.aem.page)
+    participant ConfigBus as Config Bus Storage
+    participant Edge as Edge CDN Ingestion
+    participant AEM as AEM Author (Multi-Site)
+
+    Admin->>AdminAPI: POST /config/{owner}/{repo}/main/paths.json
+    AdminAPI->>ConfigBus: Persists dynamic path mappings & secrets
+    Edge->>ConfigBus: Fetches tenant routing table on incoming request
+    Edge->>AEM: Pulls content from specific site path without Git commit
+```
+
+#### Managing Path Mappings via Admin API
+
+```bash
+# Push path mappings dynamically to the Configuration Service
+curl -X POST \
+  -H "Authorization: token ${HLX_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "mappings": [
+      "/content/brand-a/us/en/:/",
+      "/content/brand-b/us/en/:/brand-b/",
+      "/content/dam/enterprise/:/assets/"
+    ],
+    "excludes": [
+      "/**/drafts/**"
+    ]
+  }' \
+  "https://admin.hlx.page/config/my-org/my-shared-repo/main/paths.json"
+```
+
+#### Managing Access & HTTP Headers via Admin API
+
+```bash
+# Set custom HTTP headers (CORS, caching, CSP) dynamically
+curl -X POST \
+  -H "Authorization: token ${HLX_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "/**": {
+      "headers": {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Access-Control-Allow-Origin": "*"
+      }
+    }
+  }' \
+  "https://admin.hlx.page/config/my-org/my-shared-repo/main/headers.json"
+```
+
+> [!CAUTION]
+> **Precedence Warning**: If a physical `paths.json` exists in your repository root, Edge Delivery will ignore the Configuration Service API. To migrate to the Configuration Service, delete `paths.json` from Git.
+
+---
+
+## Part 2: Authoring Paradigms (Crosswalk Page Blocks vs Content Fragments)
+
+### Comparison & Decision Matrix
+
+| Dimension | Paradigm A: Crosswalk Visual Blocks | Paradigm B: Content Fragments (CFs) |
+| :--- | :--- | :--- |
+| **Primary Persona** | Visual Content Authors, Marketers | Structured Data Authors, Copywriters, DAM Managers |
+| **Authoring Tool** | **Universal Editor (WYSIWYG)** Canvas | **Content Fragment Console** / Spreadsheet feeds |
+| **Underlying Resource** | `core/franklin/components/block/v1/block` | `dam:Asset` with `cq:model` (Content Fragment Model) |
+| **DOM Delivery** | Rendered as table-like `div` containers | Rendered via **HTML Handlebars Template** or JSON feed |
+| **Best Used For** | Marketing pages, Landing pages, Custom layout grids | Products, Press releases, Team bios, Omnichannel feeds |
+| **LLM & SEO Crawl** | Standard page HTML markup | Pre-rendered semantic HTML or clean JSON feeds |
+
+---
+
+### 2A. Paradigm A: Crosswalk Visual Page Blocks
+
+Crosswalk page blocks are standard AEM components placed on an AEM page that output the table-like DOM structure expected by Edge Delivery Services, instrumented with `data-aue-*` for the Universal Editor.
+
+#### Flow Diagram: Crosswalk Block Execution
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Author as Author (in Universal Editor)
+    participant UE as Universal Editor Canvas
+    participant JCR as AEM JCR Repository
+    participant HTL as Crosswalk Block HTL
+    participant Decorate as JS Block Decorator (scripts/blocks)
+
+    Author->>UE: Edits title & image in Universal Editor
+    UE->>JCR: Saves properties to /jcr:content/root/hero
+    Author->>UE: Triggers "Preview"
+    HTL->>HTL: Renders <div class="hero" data-aue-resource="...">
+    HTL-->>Decorate: Delivers raw block markup to Edge Delivery
+    Decorate->>Decorate: Runs decorate(block) with moveInstrumentation()
+    Decorate-->>Author: Renders live visual block with editor handles preserved
+```
+
+#### 1. AEM HTL Component Structure (`/apps/mysite/components/hero/hero.html`)
+The HTL component outputs the strict EDS table contract:
+
+```html
+<div class="hero" 
+     data-aue-resource="urn:aemconnection:${resource.path}" 
+     data-aue-type="component" 
+     data-aue-model="hero" 
+     data-aue-label="Hero Banner">
+  <div>
+    <div data-aue-prop="image" data-aue-type="media">
+      <sly data-sly-test="${properties.fileReference}">
+        <img src="${properties.fileReference}" alt="${properties.altText @ i18n}" />
+      </sly>
+    </div>
+  </div>
+  <div>
+    <div>
+      <h1 data-aue-prop="headline" data-aue-type="text">${properties.headline}</h1>
+      <div data-aue-prop="description" data-aue-type="richtext">
+        ${properties.description @ context='html'}
+      </div>
+      <p data-aue-prop="ctaUrl" data-aue-type="reference">
+        <a href="${properties.ctaUrl}" class="button primary">${properties.ctaLabel}</a>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
+#### 2. Universal Editor Model (`component-models.json`)
 ```json
 [
   {
     "id": "hero",
     "fields": [
       {
-        "component": "text",
-        "name": "heading",
-        "label": "Heading",
+        "component": "text-input",
+        "name": "headline",
+        "label": "Headline",
         "valueType": "string",
         "required": true
       },
@@ -154,15 +275,21 @@ Universal Editor requires model and definition JSON files in your project reposi
         "valueType": "string"
       },
       {
-        "component": "text",
-        "name": "ctaText",
-        "label": "Call to Action Label",
+        "component": "text-input",
+        "name": "altText",
+        "label": "Image Alt Text",
         "valueType": "string"
       },
       {
-        "component": "text",
-        "name": "ctaLink",
-        "label": "Call to Action URL",
+        "component": "text-input",
+        "name": "ctaLabel",
+        "label": "Button Label",
+        "valueType": "string"
+      },
+      {
+        "component": "reference",
+        "name": "ctaUrl",
+        "label": "Button Link URL",
         "valueType": "string"
       }
     ]
@@ -170,202 +297,259 @@ Universal Editor requires model and definition JSON files in your project reposi
 ]
 ```
 
-### 2. `component-definitions.json` (Editor Palette)
-```json
-[
-  {
-    "title": "Hero Banner",
-    "id": "hero",
-    "plugins": {
-      "xwalk": {
-        "page": {
-          "resourceType": "core/franklin/components/block/v1/block",
-          "template": {
-            "name": "Hero",
-            "model": "hero"
-          }
-        }
-      }
-    }
-  }
-]
-```
+#### 3. Frontend Block Decorator (`blocks/hero/hero.js`)
+Uses `moveInstrumentation()` to maintain Universal Editor handles when altering DOM:
 
-### 3. `component-filters.json` (Container Rules)
-```json
-[
-  {
-    "id": "main",
-    "components": ["hero", "cards", "columns", "teaser", "fragment"]
-  }
-]
-```
-
----
-
-## 5. EDS Frontend Architecture & Page Lifecycle
-
-EDS delivers ultra-lean HTML that executes in 3 sequential phases:
-
-```
-HTML arrives (bare DOM)
-      │
-      ▼
-1. EAGER Phase      --> Decorate main, load LCP block, fetch fonts/LCP image
-      │
-      ▼
-2. LAZY Phase       --> Decorate remaining blocks, load headers, footers, favicons
-      │
-      ▼
-3. DELAYED Phase    --> MarTech, Analytics (Adobe Launch/Datastream), Consent banners (after 3000ms or scroll)
-```
-
-### Key Files in an EDS Project
-
-| File / Folder | Purpose |
-| :--- | :--- |
-| `scripts/aem.js` (or `lib-franklin.js`) | Core library: block loading, LCP detection, sampleRUM |
-| `scripts/scripts.js` | Site entrypoint: `loadEager`, `loadLazy`, `loadDelayed`, custom DOM decoration |
-| `styles/styles.css` | Global typography, layout tokens, reset styles |
-| `blocks/<name>/<name>.js` | Block decorater script: transforms semantic HTML into UI |
-| `blocks/<name>/<name>.css` | Block-scoped CSS |
-| `helix-query.yaml` | Indexing definition for JSON feeds/search |
-| `head.html` | Extra `<head>` elements (fonts, preconnects, analytics snippets) |
-
----
-
-## 6. Helix / EDS Admin API Cheatsheet
-
-Use the Admin API to programmatically trigger preview, publish, and cache purges.
-
-**Base URL**: `https://admin.hlx.page` (or `https://admin.aem.page`)
-
-| Operation | Method | Endpoint Pattern |
-| :--- | :--- | :--- |
-| **Get Status** | `GET` | `/status/{owner}/{repo}/{ref}/{path}` |
-| **Preview Update** | `POST` | `/preview/{owner}/{repo}/{ref}/{path}` |
-| **Publish (Live)** | `POST` | `/live/{owner}/{repo}/{ref}/{path}` |
-| **Purge Cache** | `POST` | `/cache/{owner}/{repo}/{ref}/{path}` |
-| **Re-index Page** | `POST` | `/index/{owner}/{repo}/{ref}/{path}` |
-
-### cURL Examples
-
-#### Trigger Preview from AEM Publish Hook:
-```bash
-curl -X POST \
-  -H "Authorization: token ${HLX_ADMIN_TOKEN}" \
-  "https://admin.hlx.page/preview/my-org/my-site/main/us/en/products"
-```
-
-#### Publish to Live:
-```bash
-curl -X POST \
-  -H "Authorization: token ${HLX_ADMIN_TOKEN}" \
-  "https://admin.hlx.page/live/my-org/my-site/main/us/en/products"
-```
-
----
-
-## 7. Indexing & Querying (`helix-query.yaml`)
-
-Defines automated serverless JSON indices generated from published pages (useful for blogs, search, listings):
-
-```yaml
-version: 1
-indices:
-  articles:
-    target: /query-index.json
-    source: /us/en/blog/*
-    properties:
-      title:
-        select: head > meta[property="og:title"]
-        value: attribute(content)
-      description:
-        select: head > meta[name="description"]
-        value: attribute(content)
-      image:
-        select: head > meta[property="og:image"]
-        value: attribute(content)
-      date:
-        select: head > meta[name="publication-date"]
-        value: attribute(content)
-      category:
-        select: head > meta[name="category"]
-        value: attribute(content)
-```
-
-Querying in frontend code (`blocks/article-feed/article-feed.js`):
 ```javascript
-export default async function decorate(block) {
-  const resp = await fetch('/query-index.json');
-  const json = await resp.json();
-  const articles = json.data;
-  // render articles
+import { moveInstrumentation } from '../../scripts/scripts.js';
+
+export default function decorate(block) {
+  const [imageCol, contentCol] = [...block.children];
+
+  // Restructure image into background picture wrapper
+  if (imageCol) {
+    const imgWrapper = document.createElement('div');
+    imgWrapper.className = 'hero-image-wrapper';
+    moveInstrumentation(imageCol, imgWrapper);
+
+    const img = imageCol.querySelector('img');
+    if (img) {
+      img.setAttribute('loading', 'eager');
+      img.setAttribute('fetchpriority', 'high');
+      imgWrapper.append(img);
+    }
+    imageCol.replaceWith(imgWrapper);
+  }
+
+  // Restructure content column
+  if (contentCol) {
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'hero-content-wrapper';
+    moveInstrumentation(contentCol, contentWrapper);
+
+    while (contentCol.firstElementChild) {
+      contentWrapper.append(contentCol.firstElementChild);
+    }
+    contentCol.replaceWith(contentWrapper);
+  }
 }
 ```
 
 ---
 
-## 8. Development & Local Testing CLI
+### 2B. Paradigm B: AEM Content Fragments (CFs) as a Content Source
 
-### Installation
-```bash
-npm install -g @adobe/aem-cli
-# Or legacy Franklin CLI:
-npm install -g @adobe/helix-cli
-```
+There are two primary patterns to serve AEM Content Fragments through Edge Delivery Services:
+1. **HTML-Rendered Content Fragments (Modern Edge-First & SEO Pattern)**: AEM automatically transforms the Content Fragment into self-contained semantic HTML using an assigned Handlebars/Mustache template before publishing to the Content Bus.
+2. **GraphQL / JSON Exporter Pattern**: AEM exposes persisted GraphQL endpoints or JSON files cached on the Edge, which an EDS block queries and renders on the client side.
 
-### Common Commands
-```bash
-# Start local dev server (proxies content from .aem.page preview)
-aem up
+#### Flow Diagram: Content Fragment Ingestion & Rendering
 
-# Specify custom port or open browser
-aem up --port 3001 --open
+```mermaid
+flowchart TD
+    subgraph AEM_CF_Authoring ["AEM Assets / CF Console"]
+        CFM["Content Fragment Model<br/>(e.g., Article, Product, Speaker)"]
+        CF["Authored Content Fragment"]
+        CFM --> CF
+    end
 
-# Lint code (ESLint & Stylelint)
-npm run lint
+    subgraph Publishing_Methods ["Publishing Flow"]
+        subgraph Option_B1 ["Pattern 1: Pre-rendered HTML (Edge-First)"]
+            Tpl["Handlebars / Mustache Template"]
+            CF --> Tpl
+            Tpl -->|"Publish HTML to Content Bus"| HTMLOut["/content/dam/site/fragments/article.html"]
+        end
 
-# Run automated tests
-npm test
+        subgraph Option_B2 ["Pattern 2: Persisted GraphQL / JSON"]
+            GQL["AEM Persisted Query"]
+            CF --> GQL
+            GQL -->|"Expose Cached JSON"| JSONOut["/graphql/execute.json/mysite/article-by-path"]
+        end
+    end
+
+    subgraph EDS_Consumption ["Edge Delivery Services Page"]
+        Block1["HTML Fragment Block<br/>(Fetches and inlines self-contained HTML)"]
+        Block2["Dynamic CF List Block<br/>(Fetches JSON & renders interactive UI)"]
+    end
+
+    HTMLOut --> Block1
+    JSONOut --> Block2
 ```
 
 ---
 
-## 9. Performance Best Practices (100 Lighthouse)
+#### Pattern B1: HTML Template-Transformed Content Fragments (Modern SEO / Edge First)
 
-1. **LCP Image Handling**:
-   - Ensure the LCP image uses `<picture>` and `loading="eager"`.
-   - Set `fetchpriority="high"` on hero images.
-   - Never lazy-load the above-the-fold hero block.
+AEM Cloud Service allows assigning an HTML template (written in Handlebars) to a Content Fragment Model. When published, it writes a pre-rendered, crawlable HTML file to the edge.
 
-2. **No Blocking CSS/JS**:
-   - Keep `styles.css` lean (< 25KB uncompressed).
-   - Only load block CSS/JS when the block is present on the page.
+##### 1. Handlebars Template Assigned in AEM (`article-fragment.hbs`):
+```handlebars
+<div class="article-fragment" data-aue-resource="urn:aemconnection:{{_path}}" data-aue-type="component" data-aue-model="article-cf">
+  <div class="article-header">
+    <h1 data-aue-prop="title" data-aue-type="text">{{title}}</h1>
+    <p class="article-meta">
+      <span class="author" data-aue-prop="author" data-aue-type="text">{{author}}</span> | 
+      <time datetime="{{publishDate}}">{{publishDate}}</time>
+    </p>
+  </div>
+  {{#if heroImage}}
+    <div class="article-hero" data-aue-prop="heroImage" data-aue-type="media">
+      <img src="{{heroImage._path}}" alt="{{title}}" loading="eager" />
+    </div>
+  {{/if}}
+  <div class="article-body" data-aue-prop="articleBody" data-aue-type="richtext">
+    {{{articleBody.html}}}
+  </div>
+</div>
+```
 
-3. **DOM Cleanliness in AEM HTL**:
-   - Strip unnecessary wrapping `<div>` elements from AEM HTL components.
-   - Maintain the standard EDS table-like block structure:
-     ```html
-     <div class="cards">
-       <div>
-         <div>Image/Col 1</div>
-         <div>Content/Col 2</div>
-       </div>
-     </div>
-     ```
+##### 2. EDS Block to Inject HTML Fragments (`blocks/fragment/fragment.js`):
+```javascript
+export default async function decorate(block) {
+  const link = block.querySelector('a');
+  const path = link ? link.getAttribute('href') : block.textContent.trim();
 
-4. **Third-Party Script Isolation**:
-   - All third-party tags (Google Tag Manager, Adobe Launch, chat widgets) must run strictly in the **delayed** phase (`loadDelayed()` in `scripts.js`, default 3s delay).
+  if (!path) return;
+
+  try {
+    const resp = await fetch(`${path}.plain.html`);
+    if (!resp.ok) throw new Error(`Failed to fetch fragment from ${path}`);
+
+    const html = await resp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Replace the block wrapper with the loaded fragment content
+    block.innerHTML = '';
+    block.append(...doc.body.children);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Fragment loading error:', err);
+    block.innerHTML = '<p class="fragment-error">Unable to display fragment.</p>';
+  }
+}
+```
 
 ---
 
-## 10. Common Pitfalls & Troubleshooting
+#### Pattern B2: Client-side Rendered Content Fragments via GraphQL
 
-| Problem | Root Cause | Solution |
+Used when you need dynamic filtering, client-side pagination, or search against a library of Content Fragments.
+
+##### 1. Persisted Query in AEM (`mysite/get-articles`):
+```graphql
+query getArticles($limit: Int) {
+  articleList(_filter: { _path: { _expressions: [{ value: "/content/dam/mysite/articles" }] } }, _limit: $limit) {
+    items {
+      _path
+      title
+      author
+      publishDate
+      heroImage {
+        ... on ImageRef {
+          _path
+        }
+      }
+      summary {
+        plaintext
+      }
+    }
+  }
+}
+```
+
+##### 2. EDS Block Consuming GraphQL Query (`blocks/cf-feed/cf-feed.js`):
+```javascript
+export default async function decorate(block) {
+  const endpoint = 'https://publish-p12345-e67890.adobeaemcloud.com/graphql/execute.json/mysite/get-articles;limit=10';
+
+  block.innerHTML = '<div class="loading-state">Loading articles...</div>';
+
+  try {
+    const resp = await fetch(endpoint);
+    const json = await resp.json();
+    const articles = json?.data?.articleList?.items || [];
+
+    const container = document.createElement('div');
+    container.className = 'cf-feed-grid';
+
+    articles.forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'cf-feed-card';
+      card.innerHTML = `
+        ${item.heroImage ? `<img src="${item.heroImage._path}" alt="${item.title}" loading="lazy" />` : ''}
+        <h3>${item.title}</h3>
+        <p class="author">By ${item.author}</p>
+        <p class="summary">${item.summary?.plaintext || ''}</p>
+      `;
+      container.append(card);
+    });
+
+    block.innerHTML = '';
+    block.append(container);
+  } catch (e) {
+    block.innerHTML = '<p>Error loading articles.</p>';
+  }
+}
+```
+
+---
+
+## Part 3: Universal Editor Backend Connectivity Setup
+
+Regardless of whether you author Visual Blocks or Content Fragments, AEM Cloud Service requires OSGi and CORS configuration to accept Universal Editor connections.
+
+### OSGi CORS Factory (`ui.config` Module)
+File location: `/ui.config/src/main/content/jcr_root/apps/mysite/osgiconfig/config.author/com.adobe.granite.cors.impl.CORSPolicyImpl~universaleditor.cfg.json`
+
+```json
+{
+  "supportscredentials": true,
+  "supportedmethods": [
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS"
+  ],
+  "supportedheaders": [
+    "Origin",
+    "Accept",
+    "X-Requested-With",
+    "Content-Type",
+    "Access-Control-Request-Method",
+    "Access-Control-Request-Headers",
+    "Authorization"
+  ],
+  "alloworigin": [
+    "https://experience.adobe.com"
+  ],
+  "allowedpaths": [
+    "/content/.*",
+    "/graphql/execute.json.*"
+  ]
+}
+```
+
+### Frontend Head Connections (`head.html`)
+```html
+<!-- Universal Editor Client Library -->
+<script src="https://universal-editor-service.adobe.io/cors.js" async></script>
+
+<!-- Connection Mappings -->
+<meta name="urn:adobe:aue:system:aemconnection" content="aem:https://author-p12345-e67890.adobeaemcloud.com">
+<meta name="urn:adobe:aue:config:service" content="https://universal-editor-service.adobe.io">
+```
+
+---
+
+## Part 4: Testing & Verification Matrix
+
+| Verification Step | Command / Test | Expected Result |
 | :--- | :--- | :--- |
-| **Universal Editor does not load DOM** | Missing or incorrect `urn:adobe:aue:system:aem` meta tag or CORS restriction. | Check meta tag in `head.html` and verify AEM Author CORS configuration allows UE origin. |
-| **Changes in AEM Author do not reflect in Preview** | AEM publish agent not configured or pipeline hook failed. | Trigger manual preview via Sidekick or call `POST /preview/...` via Admin API. |
-| **Universal Editor cannot select fields** | Missing `data-aue-prop` or missing component model ID. | Ensure block wrapper has `data-aue-model` and child element has `data-aue-prop`. |
-| **Lighthouse score drops below 95** | Heavy CSS in `head.html` or MarTech scripts loading in eager/lazy phase. | Move non-critical scripts to `loadDelayed()` and check LCP image optimization. |
-| **Sidekick shows "Page Not Found"** | Missing or incorrect mountpoint in `fstab.yaml`. | Check repository name, program ID, and environment ID in `fstab.yaml`. |
+| **Verify Mountpoint** | Run `aem up` locally and load `http://localhost:3000/us/en/` | Loads HTML synced directly from AEM Author servlet. |
+| **Verify CORS** | Open Network tab in Universal Editor on `experience.adobe.com` | `OPTIONS` and `PATCH` requests to AEM Author return `Access-Control-Allow-Origin: https://experience.adobe.com`. |
+| **Verify DOM Handles** | Hover over blocks in Universal Editor | Blue bounding outline wraps the block without broken or displaced overlays. |
+| **Verify Pre-Rendered CFs**| Fetch `https://main--repo--org.aem.page/content/dam/site/fragments/article.plain.html` | Returns clean semantic HTML rendered from the Handlebars template. |
+| **Verify Performance** | Run Google PageSpeed Insights on `*.aem.live` URL | 100/100 Mobile and Desktop score with LCP < 1.2s. |

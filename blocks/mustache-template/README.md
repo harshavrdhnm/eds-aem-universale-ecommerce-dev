@@ -69,17 +69,24 @@ If the `template` row is omitted, the block automatically uses the built-in resp
 
 ---
 
-## 3. Universal Editor Authoring
+## 3. Universal Editor Authoring (AEM as Content Source)
 
-When authoring in Adobe Universal Editor:
+When authoring in Adobe Universal Editor with **AEM as a Cloud Service** as the content source:
+
 1. Insert the **Mustache Template** component from the **Blocks** group in the component tree.
-2. In the properties panel, configure:
-   - **HTML Mustache Template**: Your custom HTML with Mustache tags.
-   - **Field 1 (Title / Heading)**: e.g. `New Arrivals`
-   - **Field 2 (Subtitle / Badge)**: e.g. `Limited Stock`
-   - **Field 3 (Description / Body Text)**: Rich text or plain description
-   - **Field 4 (CTA Button Label)**: e.g. `Explore Collection`
-   - **Field 5 (CTA URL / Link)**: Destination URL (e.g. `/new-arrivals`)
+2. In the properties panel (sidebar), the following fields are defined in [component-models.json](file:///component-models.json):
+   - **HTML Mustache Template (`template`)**: Rendered as a `text-area` input where authors paste custom HTML containing `{{field1}}`–`{{field5}}` or aliases (`{{title}}`, `{{description}}`, `{{ctaUrl}}`, etc.), or an external template file path (`/templates/card.html`).
+   - **Field 1 (Title / Heading) (`field1`)**: Primary title text.
+   - **Field 2 (Subtitle / Badge) (`field2`)**: Eyebrow badge or secondary subtitle.
+   - **Field 3 (Description / Body Text) (`field3`)**: Rich text or plain description (`{{{field3}}}` for raw HTML).
+   - **Field 4 (CTA Button Label) (`field4`)**: Button or link text.
+   - **Field 5 (CTA URL / Link) (`field5`)**: AEM Content / DAM reference picker for target URL.
+
+> [!TIP]
+> **Why might a property not appear in Universal Editor?**
+> 1. **Schema Component Type**: Universal Editor uses `"component": "text-area"` for multi-line inputs (`"multiline"` is not recognized).
+> 2. **Branch Sync**: Universal Editor loads `component-models.json` from the EDS preview URL (`https://<branch>--<repo>--<owner>.aem.page/component-models.json`). Changes must be pushed to git for Universal Editor to reflect new model fields.
+> 3. **Editor Environment**: Ensure you are editing in the **Universal Editor** (`experience.adobe.com/#/@org/aem/editor/canvas/...`) rather than the legacy Touch UI (`editor.html`).
 
 ---
 
