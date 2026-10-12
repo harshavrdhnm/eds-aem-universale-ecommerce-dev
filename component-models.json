@@ -1,21 +1,5 @@
 [
   {
-    "id": "aem-content-fragment",
-    "fields": [
-      {
-        "component": "text",
-        "name": "fragmentPath",
-        "label": "Content Fragment Path",
-        "description": "Path to the AEM Content Fragment",
-        "value": "/content/dam/digital-site/test-cf-data-for-eds"
-      }
-    ]
-  },
-  {
-    "id": "test-api-call",
-    "fields": []
-  },
-  {
     "id": "image",
     "fields": [
       {
@@ -430,6 +414,53 @@
         "value": "",
         "label": "Text",
         "valueType": "string"
+      }
+    ]
+  },
+  {
+    "id": "mustache-template",
+    "fields": [
+      {
+        "component": "multiline",
+        "name": "template",
+        "label": "HTML Mustache Template",
+        "valueType": "string",
+        "description": "HTML Mustache template string or remote URL (.html / .mustache). Supports {{field1}}-{{field5}}, {{title}}, {{subtitle}}, {{description}}, {{ctaText}}, {{ctaUrl}}."
+      },
+      {
+        "component": "text",
+        "name": "field1",
+        "label": "Field 1 (Title / Heading)",
+        "valueType": "string",
+        "description": "Primary heading accessible via {{field1}} or {{title}}"
+      },
+      {
+        "component": "text",
+        "name": "field2",
+        "label": "Field 2 (Subtitle / Badge)",
+        "valueType": "string",
+        "description": "Secondary title or badge accessible via {{field2}}, {{subtitle}}, or {{badge}}"
+      },
+      {
+        "component": "richtext",
+        "name": "field3",
+        "label": "Field 3 (Description / Body Text)",
+        "valueType": "string",
+        "description": "Body description accessible via {{field3}} or {{description}} (use {{{field3}}} for unescaped HTML)"
+      },
+      {
+        "component": "text",
+        "name": "field4",
+        "label": "Field 4 (CTA Button Label)",
+        "valueType": "string",
+        "description": "Call-to-action text accessible via {{field4}} or {{ctaText}}"
+      },
+      {
+        "component": "aem-content",
+        "name": "field5",
+        "label": "Field 5 (CTA URL / Link)",
+        "valueType": "string",
+        "description": "Target destination URL accessible via {{field5}} or {{ctaUrl}}"
       }
     ]
   },

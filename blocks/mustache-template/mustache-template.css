@@ -1,0 +1,126 @@
+.mustache-template-container .mustache-template-wrapper {
+  margin-top: var(--spacing-medium, 24px);
+  margin-bottom: var(--spacing-medium, 24px);
+}
+
+.mustache-template {
+  position: relative;
+  width: 100%;
+}
+
+.mustache-template .mustache-template-content {
+  width: 100%;
+}
+
+/* Default card layout when using standard properties */
+.mustache-template .mustache-template-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--spacing-medium, 24px);
+  background-color: var(--background-color, #fff);
+  border: var(--shape-border-width-1, 1px) solid var(--color-neutral-300, #e8e8e8);
+  border-radius: var(--shape-border-radius-2, 8px);
+  box-shadow: var(--shape-shadow-3, 0 2px 3px 0 rgb(0 0 0 / 8%));
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.mustache-template .mustache-template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shape-shadow-2, 0 4px 16px 0 rgb(0 0 0 / 12%));
+  border-color: var(--color-neutral-400, #d6d6d6);
+}
+
+.mustache-template .mustache-template-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  margin-bottom: var(--spacing-small, 16px);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-brand-700, #2b2b2b);
+  background-color: var(--color-neutral-200, #f5f5f5);
+  border-radius: var(--shape-border-radius-3, 24px);
+  border: 1px solid var(--color-neutral-300, #e8e8e8);
+}
+
+.mustache-template .mustache-template-title {
+  margin: 0 0 var(--spacing-xsmall, 8px);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-neutral-900, #292929);
+}
+
+.mustache-template .mustache-template-description {
+  margin: 0 0 var(--spacing-medium, 24px);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-neutral-700, #666);
+}
+
+.mustache-template .mustache-template-description p {
+  margin: 0;
+}
+
+.mustache-template .mustache-template-description p + p {
+  margin-top: var(--spacing-xsmall, 8px);
+}
+
+.mustache-template .button-container {
+  margin: 0;
+  width: 100%;
+}
+
+.mustache-template .mustache-template-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .mustache-template .mustache-template-card {
+    padding: var(--spacing-small, 16px);
+  }
+
+  .mustache-template .mustache-template-title {
+    font-size: 1.25rem;
+  }
+
+  .mustache-template .button-container {
+    display: flex;
+  }
+
+  .mustache-template .mustache-template-cta {
+    width: 100%;
+  }
+}
+
+/* Error state rendering */
+.mustache-template .mustache-template-error {
+  padding: var(--spacing-small, 16px);
+  background-color: var(--color-alert-200, #ffebeb);
+  border: 1px solid var(--color-alert-500, #db7070);
+  border-radius: var(--shape-border-radius-2, 8px);
+  color: var(--color-alert-800, #c35050);
+}
+
+.mustache-template .mustache-template-error-title {
+  margin: 0 0 var(--spacing-xsmall, 8px);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.mustache-template .mustache-template-error-message {
+  margin: 0;
+  padding: var(--spacing-xsmall, 8px);
+  background-color: rgb(255 255 255 / 80%);
+  border-radius: var(--shape-border-radius-1, 3px);
+  font-family: monospace;
+  font-size: 0.8125rem;
+  overflow-x: auto;
+}
