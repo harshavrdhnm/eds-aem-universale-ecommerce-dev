@@ -6,7 +6,8 @@
   "hero",
   "cards",
   "columns",
-  "fragment"
+  "fragment",
+  "aem-content-fragment",
+  "test-api-call",
+  "mustache-template"
 ]
-
-    

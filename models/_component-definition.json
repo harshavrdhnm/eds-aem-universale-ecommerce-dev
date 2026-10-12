@@ -44,7 +44,13 @@
           "...": "../blocks/hero/_*.json#/definitions"
         },
         {
-          "...": "../blocks/content-fragment/_*.json#/definitions"
+          "...": "../blocks/aem-content-fragment/_*.json#/definitions"
+        },
+        {
+          "...": "../blocks/test-api-call/_*.json#/definitions"
+        },
+        {
+          "...": "../blocks/mustache-template/_*.json#/definitions"
         }
       ]
     },

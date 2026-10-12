@@ -150,6 +150,18 @@
     ]
   },
   {
+    "id": "aem-content-fragment",
+    "fields": [
+      {
+        "component": "text",
+        "name": "fragmentPath",
+        "label": "Content Fragment Path",
+        "description": "Path to the AEM Content Fragment",
+        "value": "/content/dam/digital-site/test-cf-data-for-eds"
+      }
+    ]
+  },
+  {
     "id": "card",
     "fields": [
       {
@@ -497,6 +509,10 @@
         "required": true
       }
     ]
+  },
+  {
+    "id": "test-api-call",
+    "fields": []
   },
   {
     "id": "page-metadata",

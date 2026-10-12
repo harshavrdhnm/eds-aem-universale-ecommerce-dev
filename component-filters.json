@@ -22,6 +22,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "product-teaser",
       "product-recommendations"
     ]
@@ -37,6 +40,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "product-teaser",
       "product-recommendations"
     ]
@@ -52,6 +58,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "enrichment",
       "product-teaser",
       "product-recommendations",
@@ -69,6 +78,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "enrichment",
       "product-details",
       "product-teaser",
@@ -86,6 +98,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-mini-cart"
     ]
   },
@@ -100,6 +115,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-cart",
       "product-teaser",
       "product-recommendations"
@@ -116,6 +134,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-order-header",
       "commerce-order-status",
       "commerce-shipping-status",
@@ -139,6 +160,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-checkout"
     ]
   },
@@ -153,6 +177,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-search-order"
     ]
   },
@@ -167,6 +194,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "product-list-page"
     ]
   },
@@ -181,6 +211,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-login"
     ]
   },
@@ -195,6 +228,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-forgot-password"
     ]
   },
@@ -209,6 +245,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-create-account"
     ]
   },
@@ -223,6 +262,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-account-sidebar",
       "commerce-account-header",
       "commerce-orders-list",
@@ -242,6 +284,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-account-sidebar",
       "commerce-orders-list"
     ]
@@ -257,6 +302,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-account-sidebar",
       "commerce-addresses"
     ]
@@ -272,6 +320,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-account-sidebar",
       "commerce-returns-list"
     ]
@@ -287,6 +338,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-account-sidebar",
       "commerce-order-header",
       "commerce-order-status",
@@ -308,6 +362,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-search-order"
     ]
   },
@@ -322,6 +379,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-return-header",
       "commerce-order-status",
       "commerce-shipping-status",
@@ -340,6 +400,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-create-return"
     ]
   },
@@ -354,6 +417,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-confirm-account"
     ]
   },
@@ -368,6 +434,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-create-password"
     ]
   },
@@ -382,6 +451,9 @@
       "cards",
       "columns",
       "fragment",
+      "aem-content-fragment",
+      "test-api-call",
+      "mustache-template",
       "commerce-wishlist"
     ]
   },
