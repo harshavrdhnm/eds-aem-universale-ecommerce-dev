@@ -52,18 +52,41 @@ async function sanitizeHTML(html) {
 }
 
 /**
+ * Checks if a cell content looks like a Mustache template.
+ * @param {string} text Text content of the cell
+ * @param {Element} col DOM element of the cell
+ * @returns {boolean} True if content appears to be a template
+ */
+function looksLikeTemplate(text, col) {
+  if (col.querySelector('pre > code, code')) return true;
+  const link = col.querySelector('a');
+  if (link && link.href) {
+    const lower = link.href.toLowerCase();
+    if (lower.endsWith('.mustache') || lower.endsWith('.html') || lower.endsWith('.txt')) {
+      return true;
+    }
+  }
+  return text.includes('{{') && text.includes('}}');
+}
+
+/**
  * Extracts a template string from a cell or remote URL.
+ * Handles:
+ * - Code blocks (<pre><code>)
+ * - Remote URLs (.mustache, .html, .txt)
+ * - Multiline HTML entered across <p> paragraphs
+ * - Rich text HTML DOM elements
  * @param {Element} col DOM element containing template
  * @returns {Promise<string>} Template string
  */
 async function extractTemplate(col) {
-  // Check for code blocks
+  // 1. Check for code blocks
   const codeEl = col.querySelector('pre > code, code');
   if (codeEl) {
     return codeEl.textContent.trim();
   }
 
-  // Check for external template URL link
+  // 2. Check for external template URL link
   const linkEl = col.querySelector('a');
   if (linkEl && linkEl.href) {
     const url = linkEl.href;
@@ -81,16 +104,22 @@ async function extractTemplate(col) {
     }
   }
 
-  // If cell has children, check if it was authored as escaped text in a paragraph
-  if (col.children.length > 0) {
-    const firstP = col.querySelector('p');
-    if (firstP && firstP.textContent.includes('<') && firstP.textContent.includes('>')) {
-      return firstP.textContent.trim();
-    }
+  // 3. Handle multiline text in <p> tags from document authoring or textareas
+  const paragraphs = [...col.querySelectorAll('p')];
+  const combinedText = paragraphs.length > 0
+    ? paragraphs.map((p) => p.textContent).join('\n').trim()
+    : col.textContent.trim();
+
+  if (combinedText.includes('<') && combinedText.includes('>')) {
+    return combinedText;
+  }
+
+  // 4. Handle rich text HTML DOM markup
+  if (col.children.length > 0 && col.innerHTML.includes('<') && col.innerHTML.includes('>')) {
     return col.innerHTML.trim();
   }
 
-  return col.textContent.trim();
+  return combinedText || col.textContent.trim();
 }
 
 /**
@@ -99,21 +128,23 @@ async function extractTemplate(col) {
  * @returns {Object} Extracted field values
  */
 function extractFieldValue(col) {
+  const text = col.textContent.trim();
+  const html = col.innerHTML.trim();
   const result = {
-    text: col.textContent.trim(),
-    html: col.innerHTML.trim(),
+    text,
+    html,
   };
 
   const link = col.querySelector('a');
   if (link) {
-    result.url = link.href;
+    result.url = link.getAttribute('href') || link.href;
     result.linkText = link.textContent.trim();
   }
 
   const img = col.querySelector('picture > img, img');
   if (img) {
-    result.image = img.src;
-    result.alt = img.alt || '';
+    result.image = img.getAttribute('src') || img.src;
+    result.alt = img.getAttribute('alt') || img.alt || '';
   }
 
   return result;
@@ -145,25 +176,48 @@ async function parseBlockContent(block) {
         template = await extractTemplate(valCol);
       } else {
         const extracted = extractFieldValue(valCol);
-        data[key] = extracted.text;
-        data[toCamelCase(key)] = extracted.text;
+        const camelKey = toCamelCase(key);
 
-        if (extracted.html) data[`${toCamelCase(key)}Html`] = extracted.html;
-        if (extracted.url) data[`${toCamelCase(key)}Url`] = extracted.url;
-        if (extracted.image) data[`${toCamelCase(key)}Image`] = extracted.image;
-        if (extracted.alt) data[`${toCamelCase(key)}Alt`] = extracted.alt;
+        data[key] = extracted.text;
+        data[camelKey] = extracted.text;
+
+        if (extracted.html && extracted.html.includes('<')) {
+          data[`${camelKey}Html`] = extracted.html;
+          data[`${key}-html`] = extracted.html;
+        }
+        if (extracted.url) {
+          data[`${camelKey}Url`] = extracted.url;
+          data[`${key}-url`] = extracted.url;
+        }
+        if (extracted.image) {
+          data[`${camelKey}Image`] = extracted.image;
+          data[`${key}-image`] = extracted.image;
+          data[`${camelKey}Alt`] = extracted.alt;
+        }
 
         positionalFields.push({ key, value: extracted.text, raw: extracted });
       }
     } else if (cols.length === 1) {
       const col = cols[0];
-      if (!template && positionalFields.length === 0) {
+      const text = col.textContent.trim();
+
+      if (!template && positionalFields.length === 0 && looksLikeTemplate(text, col)) {
         // eslint-disable-next-line no-await-in-loop
         template = await extractTemplate(col);
       } else {
         const extracted = extractFieldValue(col);
         const fieldKey = `field${positionalFields.length + 1}`;
         data[fieldKey] = extracted.text;
+        if (extracted.html && extracted.html.includes('<')) {
+          data[`${fieldKey}Html`] = extracted.html;
+        }
+        if (extracted.url) {
+          data[`${fieldKey}Url`] = extracted.url;
+        }
+        if (extracted.image) {
+          data[`${fieldKey}Image`] = extracted.image;
+          data[`${fieldKey}Alt`] = extracted.alt;
+        }
         positionalFields.push({ key: fieldKey, value: extracted.text, raw: extracted });
       }
     }
@@ -185,7 +239,15 @@ async function parseBlockContent(block) {
     || positionalFields[1]?.value
     || '';
 
-  const field3 = data.field3
+  // Field 3: Use rich text HTML if present, else plain text
+  const rawField3 = positionalFields[2]?.raw;
+  const field3Html = data.field3Html
+    || data['field-3-html']
+    || data.descriptionHtml
+    || (rawField3?.html?.includes('<') ? rawField3.html : '');
+
+  const field3 = field3Html
+    || data.field3
     || data['field-3']
     || data.description
     || data.text
@@ -193,6 +255,14 @@ async function parseBlockContent(block) {
     || positionalFields[2]?.value
     || '';
 
+  const field3Text = data.field3
+    || data['field-3']
+    || data.description
+    || positionalFields[2]?.value
+    || '';
+
+  // Field 4: CTA Button Label
+  const rawField4 = positionalFields[3]?.raw;
   const field4 = data.field4
     || data['field-4']
     || data.ctatext
@@ -202,11 +272,14 @@ async function parseBlockContent(block) {
     || data.buttonText
     || data['button-text']
     || data.label
+    || rawField4?.linkText
     || positionalFields[3]?.value
     || '';
 
-  const field5 = data.field5
-    || data['field-5']
+  // Field 5: CTA URL / Destination Link
+  const rawField5 = positionalFields[4]?.raw;
+  const field5 = data.field5Url
+    || rawField5?.url
     || data.ctaurl
     || data.ctaUrl
     || data['cta-url']
@@ -215,6 +288,8 @@ async function parseBlockContent(block) {
     || data['button-url']
     || data.link
     || data.url
+    || data.field5
+    || data['field-5']
     || positionalFields[4]?.value
     || '';
 
@@ -223,14 +298,20 @@ async function parseBlockContent(block) {
     field1,
     field2,
     field3,
+    field3Text,
     field4,
     field5,
     title: field1,
+    heading: field1,
     subtitle: field2,
     badge: field2,
+    tagline: field2,
     description: field3,
+    descriptionText: field3Text,
     ctaText: field4,
+    buttonText: field4,
     ctaUrl: field5,
+    buttonUrl: field5,
   };
 
   return {
@@ -266,11 +347,10 @@ export default async function decorate(block) {
   // 3. Sanitize rendered markup
   const cleanHtml = await sanitizeHTML(renderedHtml);
 
-  // 4. Wrap content and preserve Universal Editor instrumentation
+  // 4. Wrap content and mount in block
   const container = document.createElement('div');
   container.className = 'mustache-template-content';
   container.innerHTML = cleanHtml;
-  moveInstrumentation(block, container);
 
   // 5. Optimize pictures
   container.querySelectorAll('picture > img').forEach((img) => {
